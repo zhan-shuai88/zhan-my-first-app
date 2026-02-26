@@ -26,31 +26,31 @@ function loadStationsData() {
 // 保存数据到本地存储
 function saveStationsData() {
     try {
-        console.log('保存站点数据到本地存储 - script.js:31', stationsData);
+        console.log('保存站点数据到本地存储 - script.js:29', stationsData);
         localStorage.setItem('stationsData', JSON.stringify(stationsData));
-        console.log('站点数据保存成功 - script.js:33');
+        console.log('站点数据保存成功 - script.js:31');
     } catch (error) {
-        console.error('保存数据到本地存储失败: - script.js:31', error);
+        console.error('保存数据到本地存储失败: - script.js:33', error);
         showMessage('保存数据失败，请检查浏览器存储空间', 'error');
     }
 }
 
 // 从本地存储加载历史数据
 function loadHistoryData() {
-    console.log('loadHistoryData called - script.js:37');
+    console.log('loadHistoryData called - script.js:40');
     const savedData = localStorage.getItem('historyData');
-    console.log('savedHistoryData: - script.js:39', savedData);
+    console.log('savedHistoryData: - script.js:42', savedData);
     if (savedData) {
         try {
             const parsedData = JSON.parse(savedData);
-            console.log('parsedHistoryData: - script.js:43', parsedData);
+            console.log('parsedHistoryData: - script.js:46', parsedData);
             return parsedData;
         } catch (error) {
-            console.error('解析历史数据失败: - script.js:46', error);
+            console.error('解析历史数据失败: - script.js:49', error);
             return [];
         }
     }
-    console.log('No history data found - script.js:50');
+    console.log('No history data found - script.js:53');
     return [];
 }
 
@@ -59,7 +59,7 @@ function saveHistoryData() {
     try {
         localStorage.setItem('historyData', JSON.stringify(historyData));
     } catch (error) {
-        console.error('保存历史数据失败: - script.js:59', error);
+        console.error('保存历史数据失败: - script.js:62', error);
     }
 }
 
@@ -137,7 +137,7 @@ function init() {
     
     // 页面加载时预加载PDF生成库
     loadPDFLibraries().catch(() => {
-        console.log('预加载PDF生成库失败，将在导出时再尝试 - script.js:116');
+        console.log('预加载PDF生成库失败，将在导出时再尝试 - script.js:140');
     });
 }
 
@@ -593,7 +593,7 @@ function exportPDF() {
         loadPDFLibraries().then(() => {
             generatePDF(selectedIndices, true);
         }).catch(error => {
-            console.error('加载PDF生成库失败: - script.js:563', error);
+            console.error('加载PDF生成库失败: - script.js:596', error);
             showMessage('加载PDF生成库失败，请检查网络连接', 'error');
         });
     } else {
@@ -844,7 +844,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
                     savePDF(pdf, totalStations, selectedIndices, saveToHistory, stationsToExport);
                 }
             }).catch(error => {
-                console.error('生成PDF失败: - script.js:814', error);
+                console.error('生成PDF失败: - script.js:847', error);
                 showMessage('生成PDF失败，请重试', 'error');
                 // 移除临时元素
                 if (tempDiv.parentNode) {
@@ -859,7 +859,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
         });
         
     } catch (error) {
-        console.error('生成PDF失败: - script.js:829', error);
+        console.error('生成PDF失败: - script.js:862', error);
         showMessage('生成PDF失败，请检查控制台错误信息', 'error');
     }
 }
@@ -901,7 +901,7 @@ function savePDF(pdf, stationCount, selectedIndices, saveToHistory = false, stat
             updateStationCount();
         }
     } catch (error) {
-        console.error('保存PDF失败: - script.js:871', error);
+        console.error('保存PDF失败: - script.js:904', error);
         showMessage('保存PDF失败，请重试', 'error');
     }
 }
@@ -1045,12 +1045,12 @@ function showShareModal() {
         timestamp: new Date().toISOString()
     };
     
-    console.log('准备分享的数据 - script.js:1053', shareData);
+    console.log('准备分享的数据 - script.js:1048', shareData);
     
     try {
         // 转换为JSON字符串
         const dataString = JSON.stringify(shareData);
-        console.log('转换后的JSON字符串长度 - script.js:1060', dataString.length);
+        console.log('转换后的JSON字符串长度 - script.js:1053', dataString.length);
         
         // 生成二维码
         const qrcodeContainer = document.getElementById('qrcodeContainer');
@@ -1058,13 +1058,52 @@ function showShareModal() {
         
         // 检查QRCode库是否加载
         if (typeof QRCode === 'undefined') {
-            console.error('QRCode库未加载');
+            console.error('QRCode库未加载 - script.js:1061');
             qrcodeContainer.innerHTML = '<p>二维码生成库未加载，请刷新页面重试</p>';
             return;
         }
         
-        // 创建二维码
-        QRCode.toCanvas(qrcodeContainer, dataString, {
+        // 检查数据大小
+        if (dataString.length > 2000) {
+            console.warn('数据过大，可能导致二维码生成失败 - script.js:1068');
+            // 尝试压缩数据
+            const compressedData = {
+                stations: stationsData.map(station => ({
+                    station_name: station.station_name,
+                    station_address: station.station_address,
+                    station_code: station.station_code,
+                    longitude: station.longitude,
+                    latitude: station.latitude
+                })),
+                timestamp: new Date().toISOString()
+            };
+            const compressedString = JSON.stringify(compressedData);
+            console.log('压缩后的数据长度: - script.js:1081', compressedString.length);
+            generateQRCode(qrcodeContainer, compressedString);
+        } else {
+            generateQRCode(qrcodeContainer, dataString);
+        }
+        
+        // 显示模态框
+        document.getElementById('shareModal').style.display = 'block';
+    } catch (error) {
+        console.error('分享数据失败: - script.js:1090', error);
+        showMessage('分享数据失败，请重试', 'error');
+    }
+}
+
+// 生成二维码的辅助函数
+function generateQRCode(container, data) {
+    try {
+        // 清空容器
+        container.innerHTML = '';
+        
+        // 创建canvas元素
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+        
+        // 生成二维码
+        QRCode.toCanvas(canvas, data, {
             width: 300,
             margin: 1,
             color: {
@@ -1073,18 +1112,15 @@ function showShareModal() {
             }
         }, function(error) {
             if (error) {
-                console.error('生成二维码失败:', error);
-                qrcodeContainer.innerHTML = '<p>生成二维码失败，请重试</p>';
+                console.error('生成二维码失败: - script.js:1115', error);
+                container.innerHTML = '<p>生成二维码失败，请重试</p>';
             } else {
-                console.log('二维码生成成功');
+                console.log('二维码生成成功 - script.js:1118');
             }
         });
-        
-        // 显示模态框
-        document.getElementById('shareModal').style.display = 'block';
     } catch (error) {
-        console.error('分享数据失败:', error);
-        showMessage('分享数据失败，请重试', 'error');
+        console.error('生成二维码过程中出错: - script.js:1122', error);
+        container.innerHTML = '<p>生成二维码失败，请重试</p>';
     }
 }
 
@@ -1145,7 +1181,7 @@ function scanQRCode() {
                         document.getElementById('importModal').style.display = 'none';
                     }, 2000);
                 } catch (error) {
-                    console.error('解析二维码数据失败:', error);
+                    console.error('解析二维码数据失败: - script.js:1184', error);
                     importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
                     importStatus.style.color = 'red';
                 }
