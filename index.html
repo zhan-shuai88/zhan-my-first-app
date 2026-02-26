@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <title>自动雨量站巡检报告填写工具</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>自动雨量站巡检报告填写工具</h1>
+        
+        <!-- 站点表单 -->
+        <div class="form-container">
+            <h2>站点信息</h2>
+            
+            <form id="stationForm">
+                <!-- 报告类型 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="report_type">报告类型：</label>
+                        <select id="report_type" required>
+                            <option value="自动雨量站">自动雨量站巡检报告</option>
+                            <option value="自动水位站">自动水位站巡检报告</option>
+                            <option value="自动图像站">自动图像站巡检报告</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="flood_period">汛期：</label>
+                        <select id="flood_period" required>
+                            <option value="汛前">2026 汛前</option>
+                            <option value="汛中">2026 汛中</option>
+                            <option value="汛后">2026 汛后</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 基本信息 -->
+                <div class="form-group">
+                    <label for="station_name">站点名称：</label>
+                    <input type="text" id="station_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="station_address">站点地址：</label>
+                    <input type="text" id="station_address" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="station_code">测站编码：</label>
+                    <input type="text" id="station_code" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="longitude">经度：</label>
+                        <input type="text" id="longitude" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="latitude">纬度：</label>
+                        <input type="text" id="latitude" required>
+                    </div>
+                    <div class="form-group" style="align-self: flex-end;">
+                        <button type="button" id="locateBtn" onclick="getCurrentLocation()" style="padding: 5px 10px; margin-top: 5px;">自动定位</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="device_model">设备型号：</label>
+                    <input type="text" id="device_model" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="battery_info">电池信息：</label>
+                    <input type="text" id="battery_info" required>
+                </div>
+                
+                <!-- 检查结果 -->
+                <h3>检查结果</h3>
+                <div class="check-results">
+                    <div class="form-group">
+                        <label>设备是否完好：</label>
+                        <select class="check-result" data-item="device_intact" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>雨量桶是否清洁：</label>
+                        <select class="check-result" data-item="rain_gauge_clean" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>各接线是否牢固：</label>
+                        <select class="check-result" data-item="wiring_secure" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>RTU运行状态是否正常：</label>
+                        <select class="check-result" data-item="rtu_normal" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>加水测试RTU读数是否与平台一致：</label>
+                        <select class="check-result" data-item="rtu_reading_match" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>蓄电池电压：</label>
+                        <select class="check-result" data-item="battery_voltage" required>
+                            <option value="">请选择</option>
+                            <option value="是">是</option>
+                            <option value="否">否</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 其他信息 -->
+                <div class="form-group">
+                    <label for="inspection_issues">巡检问题：</label>
+                    <textarea id="inspection_issues" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="inspector">巡检人员：</label>
+                    <input type="text" id="inspector" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inspection_date">巡检时间：</label>
+                        <input type="text" id="inspection_date" placeholder="如：2023年06月09日" required>
+                    </div>
+                    <div class="form-group" style="align-self: flex-end;">
+                        <button type="button" id="getDateBtn" style="padding: 5px 10px; margin-top: 5px;">获取当日时间</button>
+                    </div>
+                </div>
+                
+                <!-- 照片上传 -->
+                <h3>照片上传</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="photo1">照片1：</label>
+                        <input type="file" id="photo1" accept="image/*">
+                        <div id="photo1Preview" class="photo-preview"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="photo2">照片2：</label>
+                        <input type="file" id="photo2" accept="image/*">
+                        <div id="photo2Preview" class="photo-preview"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="photo3">照片3：</label>
+                        <input type="file" id="photo3" accept="image/*">
+                        <div id="photo3Preview" class="photo-preview"></div>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="form-actions">
+                    <button type="button" id="addStationBtn">添加站点</button>
+                    <button type="button" id="exportBtn">导出PDF</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 站点列表 -->
+        <div class="stations-list">
+            <h2>已添加站点 <span id="stationCount" style="font-size: 0.8em; color: #666; font-weight: normal;">(0)</span></h2>
+            <div class="btn-row">
+                <button type="button" id="selectAllBtn">全选</button>
+                <button type="button" id="selectNoneBtn">取消全选</button>
+                <button type="button" id="viewHistoryBtn">查看历史数据</button>
+                <button type="button" id="shareDataBtn">分享数据</button>
+                <button type="button" id="importDataBtn">导入数据</button>
+            </div>
+            <ul id="stationsList"></ul>
+        </div>
+        
+        <!-- 分享数据模态框 -->
+        <div id="shareModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>分享数据</h2>
+                <div id="qrcodeContainer" style="text-align: center; margin: 20px 0;"></div>
+                <p style="text-align: center; margin-top: 10px;">扫描二维码导入数据到其他设备</p>
+            </div>
+        </div>
+        
+        <!-- 导入数据模态框 -->
+        <div id="importModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>导入数据</h2>
+                <div style="text-align: center; margin: 20px 0;">
+                    <input type="file" id="qrCodeFile" accept="image/*" style="display: block; margin: 0 auto 20px;">
+                    <button type="button" id="scanQrCodeBtn">扫描二维码</button>
+                </div>
+                <p id="importStatus" style="text-align: center; margin-top: 10px;"></p>
+            </div>
+        </div>
+        
+        <!-- 历史数据列表 -->
+        <div id="historySection" class="history-section" style="display: none;">
+            <h2>历史数据</h2>
+            <button type="button" id="backToStationsBtn">返回站点列表</button>
+            <ul id="historyList"></ul>
+        </div>
+        
+        <!-- 站点详情模态框 -->
+        <div id="stationModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>站点详情</h2>
+                <div id="stationDetails"></div>
+            </div>
+        </div>
+        
+        <!-- 消息提示 -->
+        <div id="message" class="message"></div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('Service Worker 注册成功:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Service Worker 注册失败:', error);
+                    });
+            });
+        }
+        </script>
+</body>
+</html>
