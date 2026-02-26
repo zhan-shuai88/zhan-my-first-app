@@ -26,9 +26,12 @@ function loadStationsData() {
 // 保存数据到本地存储
 function saveStationsData() {
     try {
+        console.log('保存站点数据到本地存储 - script.js:31', stationsData);
         localStorage.setItem('stationsData', JSON.stringify(stationsData));
+        console.log('站点数据保存成功 - script.js:33');
     } catch (error) {
         console.error('保存数据到本地存储失败: - script.js:31', error);
+        showMessage('保存数据失败，请检查浏览器存储空间', 'error');
     }
 }
 
@@ -534,20 +537,27 @@ function viewStation(index) {
 
 // 初始化模态框
 function initModal() {
-    // 获取模态框
-    const modal = document.getElementById('stationModal');
-    const closeBtn = document.getElementsByClassName('close')[0];
+    // 获取所有模态框和关闭按钮
+    const modals = document.querySelectorAll('.modal');
+    const closeBtns = document.querySelectorAll('.close');
     
-    // 关闭模态框
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
-    }
+    // 为每个关闭按钮添加点击事件
+    closeBtns.forEach(btn => {
+        btn.onclick = function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+    });
     
     // 点击模态框外部关闭
     window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
+        modals.forEach(modal => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
     }
 }
 
@@ -1018,33 +1028,12 @@ function initShareImportModals() {
     const shareModal = document.getElementById('shareModal');
     const shareClose = shareModal.querySelector('.close');
     
-    // 关闭分享模态框
-    if (shareClose) {
-        shareClose.onclick = function() {
-            shareModal.style.display = 'none';
-        }
-    }
-    
     // 导入数据模态框
     const importModal = document.getElementById('importModal');
     const importClose = importModal.querySelector('.close');
     
-    // 关闭导入模态框
-    if (importClose) {
-        importClose.onclick = function() {
-            importModal.style.display = 'none';
-        }
-    }
-    
-    // 点击模态框外部关闭
-    window.onclick = function(event) {
-        if (event.target == shareModal) {
-            shareModal.style.display = 'none';
-        }
-        if (event.target == importModal) {
-            importModal.style.display = 'none';
-        }
-    }
+    // 注意：关闭按钮和点击外部关闭的事件处理已在initModal函数中统一处理
+    // 这里不再重复绑定事件，避免冲突
 }
 
 // 显示分享数据模态框
@@ -1056,30 +1045,47 @@ function showShareModal() {
         timestamp: new Date().toISOString()
     };
     
-    // 转换为JSON字符串
-    const dataString = JSON.stringify(shareData);
+    console.log('准备分享的数据 - script.js:1053', shareData);
     
-    // 生成二维码
-    const qrcodeContainer = document.getElementById('qrcodeContainer');
-    qrcodeContainer.innerHTML = '';
-    
-    // 创建二维码
-    QRCode.toCanvas(qrcodeContainer, dataString, {
-        width: 300,
-        margin: 1,
-        color: {
-            dark: '#000000',
-            light: '#ffffff'
+    try {
+        // 转换为JSON字符串
+        const dataString = JSON.stringify(shareData);
+        console.log('转换后的JSON字符串长度 - script.js:1060', dataString.length);
+        
+        // 生成二维码
+        const qrcodeContainer = document.getElementById('qrcodeContainer');
+        qrcodeContainer.innerHTML = '<p>正在生成二维码...</p>';
+        
+        // 检查QRCode库是否加载
+        if (typeof QRCode === 'undefined') {
+            console.error('QRCode库未加载');
+            qrcodeContainer.innerHTML = '<p>二维码生成库未加载，请刷新页面重试</p>';
+            return;
         }
-    }, function(error) {
-        if (error) {
-            console.error('生成二维码失败:', error);
-            qrcodeContainer.innerHTML = '<p>生成二维码失败，请重试</p>';
-        }
-    });
-    
-    // 显示模态框
-    document.getElementById('shareModal').style.display = 'block';
+        
+        // 创建二维码
+        QRCode.toCanvas(qrcodeContainer, dataString, {
+            width: 300,
+            margin: 1,
+            color: {
+                dark: '#000000',
+                light: '#ffffff'
+            }
+        }, function(error) {
+            if (error) {
+                console.error('生成二维码失败:', error);
+                qrcodeContainer.innerHTML = '<p>生成二维码失败，请重试</p>';
+            } else {
+                console.log('二维码生成成功');
+            }
+        });
+        
+        // 显示模态框
+        document.getElementById('shareModal').style.display = 'block';
+    } catch (error) {
+        console.error('分享数据失败:', error);
+        showMessage('分享数据失败，请重试', 'error');
+    }
 }
 
 // 显示导入数据模态框
