@@ -1146,26 +1146,37 @@ function generateQRCode(container, data) {
         
         // 创建canvas元素
         const canvas = document.createElement('canvas');
+        canvas.style.maxWidth = '100%';
+        canvas.style.height = 'auto';
         container.appendChild(canvas);
         
         // 生成二维码
         QRCode.toCanvas(canvas, data, {
-            width: 300,
-            margin: 1,
+            width: 350, // 增加二维码大小
+            margin: 2, // 增加边距
             color: {
                 dark: '#000000',
                 light: '#ffffff'
-            }
+            },
+            errorCorrectionLevel: 'H' // 使用最高纠错级别
         }, function(error) {
             if (error) {
-                console.error('生成二维码失败: - script.js:1161', error);
+                console.error('生成二维码失败: - script.js:1164', error);
                 container.innerHTML = '<p>生成二维码失败，请重试</p>';
             } else {
-                console.log('二维码生成成功 - script.js:1164');
+                console.log('二维码生成成功 - script.js:1167');
+                // 添加提示信息
+                const info = document.createElement('p');
+                info.style.textAlign = 'center';
+                info.style.fontSize = '14px';
+                info.style.color = '#666';
+                info.style.marginTop = '15px';
+                info.textContent = '请确保二维码清晰可见，避免反光和模糊';
+                container.appendChild(info);
             }
         });
     } catch (error) {
-        console.error('生成二维码过程中出错: - script.js:1168', error);
+        console.error('生成二维码过程中出错: - script.js:1179', error);
         container.innerHTML = '<p>生成二维码失败，请重试</p>';
     }
 }
@@ -1176,8 +1187,53 @@ function showImportModal() {
     document.getElementById('importStatus').textContent = '';
     document.getElementById('qrCodeFile').value = '';
     
+    // 初始化拖放区域
+    initDropZone();
+    
     // 显示模态框
     document.getElementById('importModal').style.display = 'block';
+}
+
+// 初始化拖放区域
+function initDropZone() {
+    const dropZone = document.getElementById('dropZone');
+    const qrCodeFile = document.getElementById('qrCodeFile');
+    
+    if (!dropZone || !qrCodeFile) return;
+    
+    // 拖放事件处理
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = '#3498db';
+        dropZone.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+    });
+    
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ddd';
+        dropZone.style.backgroundColor = 'transparent';
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ddd';
+        dropZone.style.backgroundColor = 'transparent';
+        
+        // 获取拖放的文件
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // 检查文件类型
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                // 设置文件到input元素
+                qrCodeFile.files = files;
+                // 自动扫描
+                scanQRCode();
+            } else {
+                showMessage('请拖放图片文件', 'error');
+            }
+        }
+    });
 }
 
 // 扫描二维码
@@ -1191,30 +1247,44 @@ function scanQRCode() {
         return;
     }
     
+    // 显示加载状态
+    importStatus.textContent = '正在扫描二维码...';
+    importStatus.style.color = '#3498db';
+    
     const file = fileInput.files[0];
     const reader = new FileReader();
     
     reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-            // 创建Canvas元素
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            // 尝试不同的图像处理方法来提高扫描成功率
+            const scanResults = [];
             
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
+            // 方法1: 原始图像
+            scanResults.push(scanImage(img, false, false));
             
-            // 获取图像数据
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            // 方法2: 调整大小
+            scanResults.push(scanImage(img, true, false));
             
-            // 扫描二维码
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            // 方法3: 灰度处理
+            scanResults.push(scanImage(img, false, true));
             
-            if (code) {
+            // 方法4: 调整大小 + 灰度处理
+            scanResults.push(scanImage(img, true, true));
+            
+            // 检查是否有成功的扫描结果
+            let successfulResult = null;
+            for (const result of scanResults) {
+                if (result) {
+                    successfulResult = result;
+                    break;
+                }
+            }
+            
+            if (successfulResult) {
                 try {
                     // 解析二维码数据
-                    const importData = JSON.parse(code.data);
+                    const importData = JSON.parse(successfulResult);
                     
                     // 导入数据
                     importDataFunction(importData);
@@ -1227,12 +1297,12 @@ function scanQRCode() {
                         document.getElementById('importModal').style.display = 'none';
                     }, 2000);
                 } catch (error) {
-                    console.error('解析二维码数据失败: - script.js:1230', error);
+                    console.error('解析二维码数据失败: - script.js:1300', error);
                     importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
                     importStatus.style.color = 'red';
                 }
             } else {
-                importStatus.textContent = '未检测到二维码，请确保图片包含有效的二维码';
+                importStatus.textContent = '未检测到二维码，请确保图片包含有效的二维码，且二维码清晰可见';
                 importStatus.style.color = 'red';
             }
         };
@@ -1240,6 +1310,62 @@ function scanQRCode() {
     };
     
     reader.readAsDataURL(file);
+}
+
+// 扫描图像的辅助函数
+function scanImage(img, resize, grayscale) {
+    try {
+        // 创建Canvas元素
+        const canvas = document.createElement('canvas');
+        
+        // 调整大小以提高扫描成功率
+        let width = img.width;
+        let height = img.height;
+        
+        if (resize) {
+            // 调整到合适的大小
+            const maxSize = 800;
+            if (width > maxSize || height > maxSize) {
+                const ratio = Math.min(maxSize / width, maxSize / height);
+                width *= ratio;
+                height *= ratio;
+            }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // 灰度处理
+        if (grayscale) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                data[i] = gray;     // 红色
+                data[i + 1] = gray; // 绿色
+                data[i + 2] = gray; // 蓝色
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // 获取图像数据
+        const imageData = ctx.getImageData(0, 0, width, height);
+        
+        // 扫描二维码
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert'
+        });
+        
+        return code ? code.data : null;
+    } catch (error) {
+        console.error('扫描图像失败: - script.js:1366', error);
+        return null;
+    }
 }
 
 // 导入数据
