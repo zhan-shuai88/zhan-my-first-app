@@ -495,7 +495,7 @@ function viewStation(index) {
                 <li>各接线是否牢固：${station.check_results.wiring_secure}</li>
                 <li>RTU运行状态是否正常：${station.check_results.rtu_normal}</li>
                 <li>加水测试RTU读数是否与平台一致：${station.check_results.rtu_reading_match}</li>
-                <li>蓄电池电压：${station.check_results.battery_voltage}</li>
+                <li>蓄电池电压是否正常：${station.check_results.battery_voltage}</li>
             </ul>
         </div>
         <div class="detail-group">
@@ -766,7 +766,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
                     </tr>
                     <tr>
                         <td style="border: 1px solid #000; padding: 5px; text-align: center;">6</td>
-                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">蓄电池电压</td>
+                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">蓄电池电压是否正常</td>
                         <td style="border: 1px solid #000; padding: 5px; text-align: center;">${station.check_results.battery_voltage}</td>
                     </tr>
                 </table>
@@ -1220,3 +1220,4 @@ function importDataFunction(importData) {
 
 // 初始化应用
 init();
+
