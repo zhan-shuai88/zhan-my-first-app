@@ -102,32 +102,15 @@ function init() {
         backToStationsBtn.addEventListener('click', showStationsSection);
     }
     
-    // 分享数据按钮事件
-    const shareDataBtn = document.getElementById('shareDataBtn');
-    if (shareDataBtn) {
-        shareDataBtn.addEventListener('click', showShareModal);
-    }
+
     
-    // 导入数据按钮事件
-    const importDataBtn = document.getElementById('importDataBtn');
-    if (importDataBtn) {
-        importDataBtn.addEventListener('click', showImportModal);
-    }
-    
-    // 扫描二维码按钮事件
-    const scanQrCodeBtn = document.getElementById('scanQrCodeBtn');
-    if (scanQrCodeBtn) {
-        scanQrCodeBtn.addEventListener('click', scanQRCode);
-    }
+
     
     // 照片预览事件
     setupPhotoPreview();
     
     // 初始化模态框
     initModal();
-    
-    // 初始化分享和导入模态框
-    initShareImportModals();
     
     // 更新站点列表
     updateStationsList();
@@ -137,8 +120,11 @@ function init() {
     
     // 页面加载时预加载PDF生成库
     loadPDFLibraries().catch(() => {
-        console.log('预加载PDF生成库失败，将在导出时再尝试 - script.js:140');
+        console.log('预加载PDF生成库失败，将在导出时再尝试 - script.js:123');
     });
+    
+    // 设置实时同步
+    setupRealTimeSync();
 }
 
 // 设置照片预览
@@ -632,7 +618,7 @@ function exportPDF() {
         loadPDFLibraries().then(() => {
             generatePDF(selectedIndices, true);
         }).catch(error => {
-            console.error('加载PDF生成库失败: - script.js:635', error);
+            console.error('加载PDF生成库失败: - script.js:621', error);
             showMessage('加载PDF生成库失败，请检查网络连接', 'error');
         });
     } else {
@@ -883,7 +869,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
                     savePDF(pdf, totalStations, selectedIndices, saveToHistory, stationsToExport);
                 }
             }).catch(error => {
-                console.error('生成PDF失败: - script.js:886', error);
+                console.error('生成PDF失败: - script.js:872', error);
                 showMessage('生成PDF失败，请重试', 'error');
                 // 移除临时元素
                 if (tempDiv.parentNode) {
@@ -898,7 +884,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
         });
         
     } catch (error) {
-        console.error('生成PDF失败: - script.js:901', error);
+        console.error('生成PDF失败: - script.js:887', error);
         showMessage('生成PDF失败，请检查控制台错误信息', 'error');
     }
 }
@@ -940,7 +926,7 @@ function savePDF(pdf, stationCount, selectedIndices, saveToHistory = false, stat
             updateStationCount();
         }
     } catch (error) {
-        console.error('保存PDF失败: - script.js:943', error);
+        console.error('保存PDF失败: - script.js:929', error);
         showMessage('保存PDF失败，请重试', 'error');
     }
 }
@@ -1061,511 +1047,25 @@ function deleteHistoryEntry(index) {
     }
 }
 
-// 初始化分享和导入模态框
-function initShareImportModals() {
-    // 分享数据模态框
-    const shareModal = document.getElementById('shareModal');
-    const shareClose = shareModal.querySelector('.close');
-    
-    // 导入数据模态框
-    const importModal = document.getElementById('importModal');
-    const importClose = importModal.querySelector('.close');
-    
-    // 注意：关闭按钮和点击外部关闭的事件处理已在initModal函数中统一处理
-    // 这里不再重复绑定事件，避免冲突
-}
 
-// 显示分享数据模态框
-function showShareModal() {
-    // 准备分享的数据
-    const shareData = {
-        stations: stationsData,
-        history: historyData,
-        timestamp: new Date().toISOString()
-    };
-    
-    console.log('准备分享的数据 - script.js:1087', shareData);
-    
-    try {
-        // 转换为JSON字符串
-        const dataString = JSON.stringify(shareData);
-        console.log('转换后的JSON字符串长度 - script.js:1092', dataString.length);
-        
-        // 生成二维码
-        const qrcodeContainer = document.getElementById('qrcodeContainer');
-        qrcodeContainer.innerHTML = '<p>正在生成二维码...</p>';
-        
-        // 检查QRCode库是否加载
-        if (typeof QRCode === 'undefined') {
-            console.error('QRCode库未加载 - script.js:1100');
-            qrcodeContainer.innerHTML = '<p>二维码生成库未加载，请刷新页面重试</p>';
-            return;
-        }
-        
-        // 优化数据以支持更多站点
-        let optimizedData = shareData;
-        let optimizedString = dataString;
-        
-        // 第一步：压缩照片数据
-        if (dataString.length > 3000) {
-            console.warn('数据过大，开始优化 - script.js:1111');
-            optimizedData = {
-                stations: stationsData.map(station => {
-                    const optimizedStation = {...station};
-                    // 压缩照片数据
-                    if (optimizedStation.photos) {
-                        for (let key in optimizedStation.photos) {
-                            if (optimizedStation.photos[key]) {
-                                // 替换为照片存在的标记
-                                optimizedStation.photos[key] = 'PHOTO_EXISTS';
-                            }
-                        }
-                    }
-                    return optimizedStation;
-                }),
-                history: historyData,
-                timestamp: new Date().toISOString()
-            };
-            optimizedString = JSON.stringify(optimizedData);
-            console.log('压缩照片后的数据长度: - script.js:1130', optimizedString.length);
-        }
-        
-        // 第二步：如果仍然过大，只分享站点数据，不分享历史数据
-        if (optimizedString.length > 4000) {
-            console.warn('数据仍然过大，进一步优化 - script.js:1135');
-            optimizedData = {
-                stations: optimizedData.stations,
-                timestamp: new Date().toISOString()
-            };
-            optimizedString = JSON.stringify(optimizedData);
-            console.log('移除历史数据后的数据长度: - script.js:1141', optimizedString.length);
-        }
-        
-        // 第三步：如果仍然过大，实现数据分段
-        if (optimizedString.length > 5000) {
-            console.warn('数据仍然过大，开始分段 - script.js:1146');
-            qrcodeContainer.innerHTML = '<p>数据量较大，正在生成多个二维码...</p>';
-            
-            // 计算需要分成多少段
-            const maxSegmentSize = 4500;
-            const segments = [];
-            let currentSegment = {
-                stations: [],
-                timestamp: new Date().toISOString(),
-                segment: 1,
-                totalSegments: 1
-            };
-            
-            // 分段处理站点数据
-            let currentSize = JSON.stringify(currentSegment).length;
-            
-            for (let i = 0; i < optimizedData.stations.length; i++) {
-                const station = optimizedData.stations[i];
-                const stationSize = JSON.stringify(station).length;
-                
-                if (currentSize + stationSize > maxSegmentSize) {
-                    // 当前段已满，保存并开始新段
-                    segments.push(currentSegment);
-                    currentSegment = {
-                        stations: [station],
-                        timestamp: new Date().toISOString(),
-                        segment: segments.length + 1,
-                        totalSegments: segments.length + 2
-                    };
-                    currentSize = JSON.stringify(currentSegment).length;
-                } else {
-                    // 添加到当前段
-                    currentSegment.stations.push(station);
-                    currentSize = JSON.stringify(currentSegment).length;
-                }
-            }
-            
-            // 添加最后一段
-            if (currentSegment.stations.length > 0) {
-                segments.push(currentSegment);
-            }
-            
-            // 更新总段数
-            segments.forEach((segment, index) => {
-                segment.totalSegments = segments.length;
-            });
-            
-            // 生成多个二维码
-            qrcodeContainer.innerHTML = '';
-            
-            segments.forEach((segment, index) => {
-                const segmentDiv = document.createElement('div');
-                segmentDiv.style.marginBottom = '30px';
-                
-                const segmentTitle = document.createElement('p');
-                segmentTitle.style.textAlign = 'center';
-                segmentTitle.style.fontWeight = 'bold';
-                segmentTitle.style.marginBottom = '10px';
-                segmentTitle.textContent = `二维码 ${index + 1}/${segments.length}`;
-                segmentDiv.appendChild(segmentTitle);
-                
-                const canvas = document.createElement('canvas');
-                canvas.style.maxWidth = '100%';
-                canvas.style.height = 'auto';
-                segmentDiv.appendChild(canvas);
-                
-                qrcodeContainer.appendChild(segmentDiv);
-                
-                // 生成二维码
-                QRCode.toCanvas(canvas, JSON.stringify(segment), {
-                    width: 300,
-                    margin: 2,
-                    color: {
-                        dark: '#000000',
-                        light: '#ffffff'
-                    },
-                    errorCorrectionLevel: 'H'
-                }, function(error) {
-                    if (error) {
-                        console.error('生成二维码失败: - script.js:1225', error);
-                        segmentDiv.innerHTML = `<p>生成二维码 ${index + 1} 失败，请重试</p>`;
-                    } else {
-                        console.log(`二维码 ${index + 1} 生成成功 - script.js:1228`);
-                    }
-                });
-            });
-            
-            // 添加说明
-            const instructions = document.createElement('p');
-            instructions.style.textAlign = 'center';
-            instructions.style.fontSize = '14px';
-            instructions.style.color = '#666';
-            instructions.style.marginTop = '20px';
-            instructions.innerHTML = '请按顺序扫描所有二维码，系统会自动合并数据';
-            qrcodeContainer.appendChild(instructions);
-        } else {
-            // 数据大小合适，直接生成二维码
-            generateQRCode(qrcodeContainer, optimizedString);
-        }
-        
-        // 显示模态框
-        document.getElementById('shareModal').style.display = 'block';
-    } catch (error) {
-        console.error('分享数据失败: - script.js:1249', error);
-        showMessage('分享数据失败，请重试', 'error');
-    }
-}
 
-// 生成二维码的辅助函数
-function generateQRCode(container, data) {
-    try {
-        // 清空容器
-        container.innerHTML = '';
-        
-        // 创建canvas元素
-        const canvas = document.createElement('canvas');
-        canvas.style.maxWidth = '100%';
-        canvas.style.height = 'auto';
-        container.appendChild(canvas);
-        
-        // 生成二维码
-        QRCode.toCanvas(canvas, data, {
-            width: 350, // 增加二维码大小
-            margin: 2, // 增加边距
-            color: {
-                dark: '#000000',
-                light: '#ffffff'
-            },
-            errorCorrectionLevel: 'H' // 使用最高纠错级别
-        }, function(error) {
-            if (error) {
-                console.error('生成二维码失败: - script.js:1277', error);
-                container.innerHTML = '<p>生成二维码失败，请重试</p>';
-            } else {
-                console.log('二维码生成成功 - script.js:1280');
-                // 添加提示信息
-                const info = document.createElement('p');
-                info.style.textAlign = 'center';
-                info.style.fontSize = '14px';
-                info.style.color = '#666';
-                info.style.marginTop = '15px';
-                info.textContent = '请确保二维码清晰可见，避免反光和模糊';
-                container.appendChild(info);
-            }
-        });
-    } catch (error) {
-        console.error('生成二维码过程中出错: - script.js:1292', error);
-        container.innerHTML = '<p>生成二维码失败，请重试</p>';
-    }
-}
-
-// 显示导入数据模态框
-function showImportModal() {
-    // 重置导入状态
-    document.getElementById('importStatus').textContent = '';
-    document.getElementById('qrCodeFile').value = '';
-    
-    // 初始化拖放区域
-    initDropZone();
-    
-    // 显示模态框
-    document.getElementById('importModal').style.display = 'block';
-}
-
-// 初始化拖放区域
-function initDropZone() {
-    const dropZone = document.getElementById('dropZone');
-    const qrCodeFile = document.getElementById('qrCodeFile');
-    
-    if (!dropZone || !qrCodeFile) return;
-    
-    // 拖放事件处理
-    dropZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        dropZone.style.borderColor = '#3498db';
-        dropZone.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-    });
-    
-    dropZone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        dropZone.style.borderColor = '#ddd';
-        dropZone.style.backgroundColor = 'transparent';
-    });
-    
-    dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dropZone.style.borderColor = '#ddd';
-        dropZone.style.backgroundColor = 'transparent';
-        
-        // 获取拖放的文件
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            // 检查文件类型
-            const file = files[0];
-            if (file.type.startsWith('image/')) {
-                // 设置文件到input元素
-                qrCodeFile.files = files;
-                // 自动扫描
-                scanQRCode();
-            } else {
-                showMessage('请拖放图片文件', 'error');
+// 实时数据同步
+function setupRealTimeSync() {
+    // 监听本地存储变化
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'stationsData' || e.key === 'historyData') {
+            // 数据发生变化，更新界面
+            console.log('检测到数据变化，更新界面 - script.js:1058');
+            stationsData = loadStationsData();
+            historyData = loadHistoryData();
+            updateStationsList();
+            updateStationCount();
+            // 如果当前在历史数据页面，也更新历史数据列表
+            const historySection = document.getElementById('historySection');
+            if (historySection && historySection.style.display === 'block') {
+                updateHistoryList();
             }
         }
     });
 }
 
-// 扫描二维码
-function scanQRCode() {
-    const fileInput = document.getElementById('qrCodeFile');
-    const importStatus = document.getElementById('importStatus');
-    
-    if (!fileInput.files || fileInput.files.length === 0) {
-        importStatus.textContent = '请选择一张包含二维码的图片';
-        importStatus.style.color = 'red';
-        return;
-    }
-    
-    // 显示加载状态
-    importStatus.textContent = '正在扫描二维码...';
-    importStatus.style.color = '#3498db';
-    
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            // 尝试不同的图像处理方法来提高扫描成功率
-            const scanResults = [];
-            
-            // 方法1: 原始图像
-            scanResults.push(scanImage(img, false, false));
-            
-            // 方法2: 调整大小
-            scanResults.push(scanImage(img, true, false));
-            
-            // 方法3: 灰度处理
-            scanResults.push(scanImage(img, false, true));
-            
-            // 方法4: 调整大小 + 灰度处理
-            scanResults.push(scanImage(img, true, true));
-            
-            // 检查是否有成功的扫描结果
-            let successfulResult = null;
-            for (const result of scanResults) {
-                if (result) {
-                    successfulResult = result;
-                    break;
-                }
-            }
-            
-            if (successfulResult) {
-                try {
-                    // 解析二维码数据
-                    const importData = JSON.parse(successfulResult);
-                    
-                    // 导入数据
-                    importDataFunction(importData);
-                    
-                    importStatus.textContent = '数据导入成功！';
-                    importStatus.style.color = 'green';
-                    
-                    // 关闭模态框
-                    setTimeout(() => {
-                        document.getElementById('importModal').style.display = 'none';
-                    }, 2000);
-                } catch (error) {
-                    console.error('解析二维码数据失败: - script.js:1413', error);
-                    importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
-                    importStatus.style.color = 'red';
-                }
-            } else {
-                importStatus.textContent = '未检测到二维码，请确保图片包含有效的二维码，且二维码清晰可见';
-                importStatus.style.color = 'red';
-            }
-        };
-        img.src = e.target.result;
-    };
-    
-    reader.readAsDataURL(file);
-}
-
-// 扫描图像的辅助函数
-function scanImage(img, resize, grayscale) {
-    try {
-        // 创建Canvas元素
-        const canvas = document.createElement('canvas');
-        
-        // 调整大小以提高扫描成功率
-        let width = img.width;
-        let height = img.height;
-        
-        if (resize) {
-            // 调整到合适的大小
-            const maxSize = 800;
-            if (width > maxSize || height > maxSize) {
-                const ratio = Math.min(maxSize / width, maxSize / height);
-                width *= ratio;
-                height *= ratio;
-            }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // 灰度处理
-        if (grayscale) {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
-            
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                data[i] = gray;     // 红色
-                data[i + 1] = gray; // 绿色
-                data[i + 2] = gray; // 蓝色
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-        }
-        
-        // 获取图像数据
-        const imageData = ctx.getImageData(0, 0, width, height);
-        
-        // 扫描二维码
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert'
-        });
-        
-        return code ? code.data : null;
-    } catch (error) {
-        console.error('扫描图像失败: - script.js:1479', error);
-        return null;
-    }
-}
-
-// 导入数据
-function importDataFunction(importData) {
-    // 检查是否是分段数据
-    if (importData.segment && importData.totalSegments) {
-        // 处理分段数据
-        handleSegmentedData(importData);
-        return;
-    }
-    
-    // 普通数据导入
-    if (importData.stations && Array.isArray(importData.stations)) {
-        // 导入站点数据
-        stationsData = stationsData.concat(importData.stations);
-        saveStationsData();
-    }
-    
-    if (importData.history && Array.isArray(importData.history)) {
-        // 导入历史数据
-        historyData = historyData.concat(importData.history);
-        saveHistoryData();
-    }
-    
-    // 更新站点列表和站点数量
-    updateStationsList();
-    updateStationCount();
-    
-    // 显示成功消息
-    showMessage('数据导入成功！', 'success');
-}
-
-// 处理分段数据
-function handleSegmentedData(segmentData) {
-    // 检查本地存储是否已有分段数据
-    let segments = JSON.parse(localStorage.getItem('importSegments') || '[]');
-    
-    // 检查是否已存在相同的分段
-    const existingIndex = segments.findIndex(s => 
-        s.segment === segmentData.segment && 
-        s.totalSegments === segmentData.totalSegments
-    );
-    
-    if (existingIndex === -1) {
-        // 添加新分段
-        segments.push(segmentData);
-        localStorage.setItem('importSegments', JSON.stringify(segments));
-    }
-    
-    // 检查是否收集了所有分段
-    const expectedSegments = segmentData.totalSegments;
-    const collectedSegments = segments.filter(s => 
-        s.totalSegments === expectedSegments
-    );
-    
-    if (collectedSegments.length === expectedSegments) {
-        // 所有分段都已收集，合并数据
-        let mergedStations = [];
-        
-        // 按段号排序
-        collectedSegments.sort((a, b) => a.segment - b.segment);
-        
-        // 合并所有站点
-        collectedSegments.forEach(segment => {
-            if (segment.stations && Array.isArray(segment.stations)) {
-                mergedStations = mergedStations.concat(segment.stations);
-            }
-        });
-        
-        // 导入合并后的数据
-        stationsData = stationsData.concat(mergedStations);
-        saveStationsData();
-        
-        // 更新站点列表和站点数量
-        updateStationsList();
-        updateStationCount();
-        
-        // 清除临时分段数据
-        localStorage.removeItem('importSegments');
-        
-        // 显示成功消息
-        showMessage(`成功导入 ${mergedStations.length} 个站点！`, 'success');
-    } else {
-        // 还有分段未收集
-        showMessage(`已导入第 ${segmentData.segment}/${segmentData.totalSegments} 部分数据，请继续扫描剩余二维码`, 'success');
-    }
-}
-
-// 初始化应用
-init();
