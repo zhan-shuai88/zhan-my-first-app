@@ -1103,22 +1103,29 @@ function showShareModal() {
         }
         
         // 检查数据大小
-        if (dataString.length > 2000) {
+        if (dataString.length > 5000) {
             console.warn('数据过大，可能导致二维码生成失败 - script.js:1107');
-            // 尝试压缩数据
-            const compressedData = {
-                stations: stationsData.map(station => ({
-                    station_name: station.station_name,
-                    station_address: station.station_address,
-                    station_code: station.station_code,
-                    longitude: station.longitude,
-                    latitude: station.latitude
-                })),
+            // 尝试优化数据，只压缩照片数据
+            const optimizedData = {
+                stations: stationsData.map(station => {
+                    const optimizedStation = {...station};
+                    // 如果有照片并且照片数据过大，只保留照片是否存在的标记
+                    if (optimizedStation.photos) {
+                        for (let key in optimizedStation.photos) {
+                            if (optimizedStation.photos[key]) {
+                                // 替换为照片存在的标记，而不是完整的base64数据
+                                optimizedStation.photos[key] = 'PHOTO_EXISTS';
+                            }
+                        }
+                    }
+                    return optimizedStation;
+                }),
+                history: historyData,
                 timestamp: new Date().toISOString()
             };
-            const compressedString = JSON.stringify(compressedData);
-            console.log('压缩后的数据长度: - script.js:1120', compressedString.length);
-            generateQRCode(qrcodeContainer, compressedString);
+            const optimizedString = JSON.stringify(optimizedData);
+            console.log('优化后的数据长度: - script.js:1127', optimizedString.length);
+            generateQRCode(qrcodeContainer, optimizedString);
         } else {
             generateQRCode(qrcodeContainer, dataString);
         }
@@ -1126,7 +1133,7 @@ function showShareModal() {
         // 显示模态框
         document.getElementById('shareModal').style.display = 'block';
     } catch (error) {
-        console.error('分享数据失败: - script.js:1129', error);
+        console.error('分享数据失败: - script.js:1136', error);
         showMessage('分享数据失败，请重试', 'error');
     }
 }
@@ -1151,14 +1158,14 @@ function generateQRCode(container, data) {
             }
         }, function(error) {
             if (error) {
-                console.error('生成二维码失败: - script.js:1154', error);
+                console.error('生成二维码失败: - script.js:1161', error);
                 container.innerHTML = '<p>生成二维码失败，请重试</p>';
             } else {
-                console.log('二维码生成成功 - script.js:1157');
+                console.log('二维码生成成功 - script.js:1164');
             }
         });
     } catch (error) {
-        console.error('生成二维码过程中出错: - script.js:1161', error);
+        console.error('生成二维码过程中出错: - script.js:1168', error);
         container.innerHTML = '<p>生成二维码失败，请重试</p>';
     }
 }
@@ -1220,7 +1227,7 @@ function scanQRCode() {
                         document.getElementById('importModal').style.display = 'none';
                     }, 2000);
                 } catch (error) {
-                    console.error('解析二维码数据失败: - script.js:1223', error);
+                    console.error('解析二维码数据失败: - script.js:1230', error);
                     importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
                     importStatus.style.color = 'red';
                 }
