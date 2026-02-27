@@ -1102,18 +1102,21 @@ function showShareModal() {
             return;
         }
         
-        // 检查数据大小
-        if (dataString.length > 5000) {
-            console.warn('数据过大，可能导致二维码生成失败 - script.js:1107');
-            // 尝试优化数据，只压缩照片数据
-            const optimizedData = {
+        // 优化数据以支持更多站点
+        let optimizedData = shareData;
+        let optimizedString = dataString;
+        
+        // 第一步：压缩照片数据
+        if (dataString.length > 3000) {
+            console.warn('数据过大，开始优化 - script.js:1111');
+            optimizedData = {
                 stations: stationsData.map(station => {
                     const optimizedStation = {...station};
-                    // 如果有照片并且照片数据过大，只保留照片是否存在的标记
+                    // 压缩照片数据
                     if (optimizedStation.photos) {
                         for (let key in optimizedStation.photos) {
                             if (optimizedStation.photos[key]) {
-                                // 替换为照片存在的标记，而不是完整的base64数据
+                                // 替换为照片存在的标记
                                 optimizedStation.photos[key] = 'PHOTO_EXISTS';
                             }
                         }
@@ -1123,17 +1126,127 @@ function showShareModal() {
                 history: historyData,
                 timestamp: new Date().toISOString()
             };
-            const optimizedString = JSON.stringify(optimizedData);
-            console.log('优化后的数据长度: - script.js:1127', optimizedString.length);
-            generateQRCode(qrcodeContainer, optimizedString);
+            optimizedString = JSON.stringify(optimizedData);
+            console.log('压缩照片后的数据长度: - script.js:1130', optimizedString.length);
+        }
+        
+        // 第二步：如果仍然过大，只分享站点数据，不分享历史数据
+        if (optimizedString.length > 4000) {
+            console.warn('数据仍然过大，进一步优化 - script.js:1135');
+            optimizedData = {
+                stations: optimizedData.stations,
+                timestamp: new Date().toISOString()
+            };
+            optimizedString = JSON.stringify(optimizedData);
+            console.log('移除历史数据后的数据长度: - script.js:1141', optimizedString.length);
+        }
+        
+        // 第三步：如果仍然过大，实现数据分段
+        if (optimizedString.length > 5000) {
+            console.warn('数据仍然过大，开始分段 - script.js:1146');
+            qrcodeContainer.innerHTML = '<p>数据量较大，正在生成多个二维码...</p>';
+            
+            // 计算需要分成多少段
+            const maxSegmentSize = 4500;
+            const segments = [];
+            let currentSegment = {
+                stations: [],
+                timestamp: new Date().toISOString(),
+                segment: 1,
+                totalSegments: 1
+            };
+            
+            // 分段处理站点数据
+            let currentSize = JSON.stringify(currentSegment).length;
+            
+            for (let i = 0; i < optimizedData.stations.length; i++) {
+                const station = optimizedData.stations[i];
+                const stationSize = JSON.stringify(station).length;
+                
+                if (currentSize + stationSize > maxSegmentSize) {
+                    // 当前段已满，保存并开始新段
+                    segments.push(currentSegment);
+                    currentSegment = {
+                        stations: [station],
+                        timestamp: new Date().toISOString(),
+                        segment: segments.length + 1,
+                        totalSegments: segments.length + 2
+                    };
+                    currentSize = JSON.stringify(currentSegment).length;
+                } else {
+                    // 添加到当前段
+                    currentSegment.stations.push(station);
+                    currentSize = JSON.stringify(currentSegment).length;
+                }
+            }
+            
+            // 添加最后一段
+            if (currentSegment.stations.length > 0) {
+                segments.push(currentSegment);
+            }
+            
+            // 更新总段数
+            segments.forEach((segment, index) => {
+                segment.totalSegments = segments.length;
+            });
+            
+            // 生成多个二维码
+            qrcodeContainer.innerHTML = '';
+            
+            segments.forEach((segment, index) => {
+                const segmentDiv = document.createElement('div');
+                segmentDiv.style.marginBottom = '30px';
+                
+                const segmentTitle = document.createElement('p');
+                segmentTitle.style.textAlign = 'center';
+                segmentTitle.style.fontWeight = 'bold';
+                segmentTitle.style.marginBottom = '10px';
+                segmentTitle.textContent = `二维码 ${index + 1}/${segments.length}`;
+                segmentDiv.appendChild(segmentTitle);
+                
+                const canvas = document.createElement('canvas');
+                canvas.style.maxWidth = '100%';
+                canvas.style.height = 'auto';
+                segmentDiv.appendChild(canvas);
+                
+                qrcodeContainer.appendChild(segmentDiv);
+                
+                // 生成二维码
+                QRCode.toCanvas(canvas, JSON.stringify(segment), {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    },
+                    errorCorrectionLevel: 'H'
+                }, function(error) {
+                    if (error) {
+                        console.error('生成二维码失败: - script.js:1225', error);
+                        segmentDiv.innerHTML = `<p>生成二维码 ${index + 1} 失败，请重试</p>`;
+                    } else {
+                        console.log(`二维码 ${index + 1} 生成成功 - script.js:1228`);
+                    }
+                });
+            });
+            
+            // 添加说明
+            const instructions = document.createElement('p');
+            instructions.style.textAlign = 'center';
+            instructions.style.fontSize = '14px';
+            instructions.style.color = '#666';
+            instructions.style.marginTop = '20px';
+            instructions.innerHTML = '请按顺序扫描所有二维码，系统会自动合并数据';
+            qrcodeContainer.appendChild(instructions);
         } else {
-            generateQRCode(qrcodeContainer, dataString);
+            // 数据大小合适，直接生成二维码
+            generateQRCode(qrcodeContainer, optimizedString);
         }
         
         // 显示模态框
         document.getElementById('shareModal').style.display = 'block';
     } catch (error) {
-        console.error('分享数据失败: - script.js:1136', error);
+        console.error('分享数据失败: - script.js:1249', error);
         showMessage('分享数据失败，请重试', 'error');
     }
 }
@@ -1161,10 +1274,10 @@ function generateQRCode(container, data) {
             errorCorrectionLevel: 'H' // 使用最高纠错级别
         }, function(error) {
             if (error) {
-                console.error('生成二维码失败: - script.js:1164', error);
+                console.error('生成二维码失败: - script.js:1277', error);
                 container.innerHTML = '<p>生成二维码失败，请重试</p>';
             } else {
-                console.log('二维码生成成功 - script.js:1167');
+                console.log('二维码生成成功 - script.js:1280');
                 // 添加提示信息
                 const info = document.createElement('p');
                 info.style.textAlign = 'center';
@@ -1176,7 +1289,7 @@ function generateQRCode(container, data) {
             }
         });
     } catch (error) {
-        console.error('生成二维码过程中出错: - script.js:1179', error);
+        console.error('生成二维码过程中出错: - script.js:1292', error);
         container.innerHTML = '<p>生成二维码失败，请重试</p>';
     }
 }
@@ -1297,7 +1410,7 @@ function scanQRCode() {
                         document.getElementById('importModal').style.display = 'none';
                     }, 2000);
                 } catch (error) {
-                    console.error('解析二维码数据失败: - script.js:1300', error);
+                    console.error('解析二维码数据失败: - script.js:1413', error);
                     importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
                     importStatus.style.color = 'red';
                 }
@@ -1363,13 +1476,21 @@ function scanImage(img, resize, grayscale) {
         
         return code ? code.data : null;
     } catch (error) {
-        console.error('扫描图像失败: - script.js:1366', error);
+        console.error('扫描图像失败: - script.js:1479', error);
         return null;
     }
 }
 
 // 导入数据
 function importDataFunction(importData) {
+    // 检查是否是分段数据
+    if (importData.segment && importData.totalSegments) {
+        // 处理分段数据
+        handleSegmentedData(importData);
+        return;
+    }
+    
+    // 普通数据导入
     if (importData.stations && Array.isArray(importData.stations)) {
         // 导入站点数据
         stationsData = stationsData.concat(importData.stations);
@@ -1388,6 +1509,62 @@ function importDataFunction(importData) {
     
     // 显示成功消息
     showMessage('数据导入成功！', 'success');
+}
+
+// 处理分段数据
+function handleSegmentedData(segmentData) {
+    // 检查本地存储是否已有分段数据
+    let segments = JSON.parse(localStorage.getItem('importSegments') || '[]');
+    
+    // 检查是否已存在相同的分段
+    const existingIndex = segments.findIndex(s => 
+        s.segment === segmentData.segment && 
+        s.totalSegments === segmentData.totalSegments
+    );
+    
+    if (existingIndex === -1) {
+        // 添加新分段
+        segments.push(segmentData);
+        localStorage.setItem('importSegments', JSON.stringify(segments));
+    }
+    
+    // 检查是否收集了所有分段
+    const expectedSegments = segmentData.totalSegments;
+    const collectedSegments = segments.filter(s => 
+        s.totalSegments === expectedSegments
+    );
+    
+    if (collectedSegments.length === expectedSegments) {
+        // 所有分段都已收集，合并数据
+        let mergedStations = [];
+        
+        // 按段号排序
+        collectedSegments.sort((a, b) => a.segment - b.segment);
+        
+        // 合并所有站点
+        collectedSegments.forEach(segment => {
+            if (segment.stations && Array.isArray(segment.stations)) {
+                mergedStations = mergedStations.concat(segment.stations);
+            }
+        });
+        
+        // 导入合并后的数据
+        stationsData = stationsData.concat(mergedStations);
+        saveStationsData();
+        
+        // 更新站点列表和站点数量
+        updateStationsList();
+        updateStationCount();
+        
+        // 清除临时分段数据
+        localStorage.removeItem('importSegments');
+        
+        // 显示成功消息
+        showMessage(`成功导入 ${mergedStations.length} 个站点！`, 'success');
+    } else {
+        // 还有分段未收集
+        showMessage(`已导入第 ${segmentData.segment}/${segmentData.totalSegments} 部分数据，请继续扫描剩余二维码`, 'success');
+    }
 }
 
 // 初始化应用
