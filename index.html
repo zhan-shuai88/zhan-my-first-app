@@ -192,38 +192,14 @@
                 <button type="button" id="selectAllBtn">全选</button>
                 <button type="button" id="selectNoneBtn">取消全选</button>
                 <button type="button" id="viewHistoryBtn">查看历史数据</button>
-                <button type="button" id="shareDataBtn">分享数据</button>
-                <button type="button" id="importDataBtn">导入数据</button>
+
             </div>
             <ul id="stationsList"></ul>
         </div>
         
-        <!-- 分享数据模态框 -->
-        <div id="shareModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>分享数据</h2>
-                <div id="qrcodeContainer" style="text-align: center; margin: 20px 0;"></div>
-                <p style="text-align: center; margin-top: 10px;">扫描二维码导入数据到其他设备</p>
-            </div>
-        </div>
+
         
-        <!-- 导入数据模态框 -->
-        <div id="importModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>导入数据</h2>
-                <div style="text-align: center; margin: 20px 0;">
-                    <div id="dropZone" style="border: 2px dashed #ddd; border-radius: 10px; padding: 40px; margin: 0 auto 20px; max-width: 300px; transition: all 0.3s ease;">
-                        <p style="margin: 0; color: #666;">拖放二维码图片到这里</p>
-                        <p style="margin: 10px 0 0; color: #999; font-size: 14px;">或</p>
-                        <input type="file" id="qrCodeFile" accept="image/*" style="display: block; margin: 10px auto 0;">
-                    </div>
-                    <button type="button" id="scanQrCodeBtn">扫描二维码</button>
-                </div>
-                <p id="importStatus" style="text-align: center; margin-top: 10px;"></p>
-            </div>
-        </div>
+
         
         <!-- 历史数据列表 -->
         <div id="historySection" class="history-section" style="display: none;">
@@ -245,8 +221,7 @@
         <div id="message" class="message"></div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
     <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
