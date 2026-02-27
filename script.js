@@ -398,25 +398,64 @@ function removeStation(index) {
 
 // 获取当前位置
 function getCurrentLocation() {
-    // 直接使用模拟位置数据
-    const mockLongitude = '114.305556';
-    const mockLatitude = '30.592778';
-    
     // 确保DOM元素存在
     const longitudeInput = document.getElementById('longitude');
     const latitudeInput = document.getElementById('latitude');
     
-    if (longitudeInput && latitudeInput) {
-        // 填充经纬度输入框
-        longitudeInput.value = mockLongitude;
-        latitudeInput.value = mockLatitude;
-        
-        // 显示成功消息
-        showMessage('位置获取成功！', 'success');
-    } else {
+    if (!longitudeInput || !latitudeInput) {
         // 显示错误消息
         showMessage('经纬度输入框未找到', 'error');
+        return;
     }
+    
+    // 检查浏览器是否支持地理位置API
+    if (!navigator.geolocation) {
+        showMessage('您的浏览器不支持地理位置功能', 'error');
+        return;
+    }
+    
+    // 显示加载消息
+    showMessage('正在获取位置...', 'success');
+    
+    // 使用浏览器的地理位置API获取真实位置
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            // 获取成功
+            const longitude = position.coords.longitude.toFixed(6);
+            const latitude = position.coords.latitude.toFixed(6);
+            
+            // 填充经纬度输入框
+            longitudeInput.value = longitude;
+            latitudeInput.value = latitude;
+            
+            // 显示成功消息
+            showMessage('位置获取成功！', 'success');
+        },
+        function(error) {
+            // 获取失败
+            let errorMessage = '获取位置失败';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = '用户拒绝了位置请求';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = '位置信息不可用';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = '获取位置超时';
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage = '未知错误';
+                    break;
+            }
+            showMessage(errorMessage, 'error');
+        },
+        {
+            enableHighAccuracy: true, // 启用高精度
+            timeout: 10000, // 10秒超时
+            maximumAge: 0 // 不使用缓存
+        }
+    );
 }
 
 // 获取当日时间
@@ -593,7 +632,7 @@ function exportPDF() {
         loadPDFLibraries().then(() => {
             generatePDF(selectedIndices, true);
         }).catch(error => {
-            console.error('加载PDF生成库失败: - script.js:596', error);
+            console.error('加载PDF生成库失败: - script.js:635', error);
             showMessage('加载PDF生成库失败，请检查网络连接', 'error');
         });
     } else {
@@ -844,7 +883,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
                     savePDF(pdf, totalStations, selectedIndices, saveToHistory, stationsToExport);
                 }
             }).catch(error => {
-                console.error('生成PDF失败: - script.js:847', error);
+                console.error('生成PDF失败: - script.js:886', error);
                 showMessage('生成PDF失败，请重试', 'error');
                 // 移除临时元素
                 if (tempDiv.parentNode) {
@@ -859,7 +898,7 @@ function generatePDF(selectedIndices, saveToHistory = false) {
         });
         
     } catch (error) {
-        console.error('生成PDF失败: - script.js:862', error);
+        console.error('生成PDF失败: - script.js:901', error);
         showMessage('生成PDF失败，请检查控制台错误信息', 'error');
     }
 }
@@ -901,7 +940,7 @@ function savePDF(pdf, stationCount, selectedIndices, saveToHistory = false, stat
             updateStationCount();
         }
     } catch (error) {
-        console.error('保存PDF失败: - script.js:904', error);
+        console.error('保存PDF失败: - script.js:943', error);
         showMessage('保存PDF失败，请重试', 'error');
     }
 }
@@ -1045,12 +1084,12 @@ function showShareModal() {
         timestamp: new Date().toISOString()
     };
     
-    console.log('准备分享的数据 - script.js:1048', shareData);
+    console.log('准备分享的数据 - script.js:1087', shareData);
     
     try {
         // 转换为JSON字符串
         const dataString = JSON.stringify(shareData);
-        console.log('转换后的JSON字符串长度 - script.js:1053', dataString.length);
+        console.log('转换后的JSON字符串长度 - script.js:1092', dataString.length);
         
         // 生成二维码
         const qrcodeContainer = document.getElementById('qrcodeContainer');
@@ -1058,14 +1097,14 @@ function showShareModal() {
         
         // 检查QRCode库是否加载
         if (typeof QRCode === 'undefined') {
-            console.error('QRCode库未加载 - script.js:1061');
+            console.error('QRCode库未加载 - script.js:1100');
             qrcodeContainer.innerHTML = '<p>二维码生成库未加载，请刷新页面重试</p>';
             return;
         }
         
         // 检查数据大小
         if (dataString.length > 2000) {
-            console.warn('数据过大，可能导致二维码生成失败 - script.js:1068');
+            console.warn('数据过大，可能导致二维码生成失败 - script.js:1107');
             // 尝试压缩数据
             const compressedData = {
                 stations: stationsData.map(station => ({
@@ -1078,7 +1117,7 @@ function showShareModal() {
                 timestamp: new Date().toISOString()
             };
             const compressedString = JSON.stringify(compressedData);
-            console.log('压缩后的数据长度: - script.js:1081', compressedString.length);
+            console.log('压缩后的数据长度: - script.js:1120', compressedString.length);
             generateQRCode(qrcodeContainer, compressedString);
         } else {
             generateQRCode(qrcodeContainer, dataString);
@@ -1087,7 +1126,7 @@ function showShareModal() {
         // 显示模态框
         document.getElementById('shareModal').style.display = 'block';
     } catch (error) {
-        console.error('分享数据失败: - script.js:1090', error);
+        console.error('分享数据失败: - script.js:1129', error);
         showMessage('分享数据失败，请重试', 'error');
     }
 }
@@ -1112,14 +1151,14 @@ function generateQRCode(container, data) {
             }
         }, function(error) {
             if (error) {
-                console.error('生成二维码失败: - script.js:1115', error);
+                console.error('生成二维码失败: - script.js:1154', error);
                 container.innerHTML = '<p>生成二维码失败，请重试</p>';
             } else {
-                console.log('二维码生成成功 - script.js:1118');
+                console.log('二维码生成成功 - script.js:1157');
             }
         });
     } catch (error) {
-        console.error('生成二维码过程中出错: - script.js:1122', error);
+        console.error('生成二维码过程中出错: - script.js:1161', error);
         container.innerHTML = '<p>生成二维码失败，请重试</p>';
     }
 }
@@ -1181,7 +1220,7 @@ function scanQRCode() {
                         document.getElementById('importModal').style.display = 'none';
                     }, 2000);
                 } catch (error) {
-                    console.error('解析二维码数据失败: - script.js:1184', error);
+                    console.error('解析二维码数据失败: - script.js:1223', error);
                     importStatus.textContent = '解析二维码数据失败，请确保二维码包含有效的数据';
                     importStatus.style.color = 'red';
                 }
@@ -1220,4 +1259,3 @@ function importDataFunction(importData) {
 
 // 初始化应用
 init();
-
